@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Survey Summary Explorer</title>
-    <!-- Papa Parse for CSV parsing -->
+    <title>Survey Explorer + Chi‑Square</title>
+    <!-- Papa Parse -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <!-- Chart.js for charts -->
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- jStat for statistical tests -->
+    <script src="https://cdn.jsdelivr.net/npm/jstat@1.9.5/dist/jstat.min.js"></script>
     <style>
         * {
             box-sizing: border-box;
@@ -55,6 +57,15 @@
 
         .card-body {
             padding: 2.5rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 2rem 0 1.5rem 0;
+            color: #1f2937;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.5rem;
         }
 
         .controls {
@@ -138,6 +149,28 @@
             background: #9ca3af;
             cursor: not-allowed;
             box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);
+            white-space: nowrap;
+        }
+
+        .btn-secondary:hover {
+            background: #059669;
+        }
+
+        .btn-secondary:active {
+            transform: scale(0.98);
         }
 
         .loading {
@@ -257,15 +290,67 @@
             max-height: 400px;
             width: 100% !important;
         }
+
+        /* Chi‑Square results styling */
+        .chi-result {
+            background: #f0fdf4;
+            border-left: 6px solid #10b981;
+            padding: 1.5rem;
+            border-radius: 0.75rem;
+            margin-top: 1.5rem;
+            font-size: 1rem;
+        }
+
+        .chi-result h4 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: #065f46;
+        }
+
+        .chi-result p {
+            margin: 0.5rem 0;
+        }
+
+        .chi-result .stat-highlight {
+            font-weight: 700;
+            color: #047857;
+        }
+
+        .chi-warning {
+            background: #fef3c7;
+            border-left: 6px solid #f59e0b;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            font-size: 0.95rem;
+        }
+
+        .chi-table-small {
+            max-width: 100%;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        .chi-table-small table {
+            min-width: 300px;
+            font-size: 0.9rem;
+        }
+
+        .chi-table-small th {
+            background: #d1fae5;
+        }
     </style>
 </head>
 <body>
 <div class="card">
     <div class="card-header">
-        <h1>📊 Survey Summary Explorer</h1>
-        <p>Choose how you want to group the responses. The table and chart will update automatically.</p>
+        <h1>📊 Survey Explorer with Chi‑Square Test</h1>
+        <p>Group responses and test relationships between any two questions.</p>
     </div>
     <div class="card-body">
+        <!-- ========== SUMMARY SECTION ========== -->
+        <h2 class="section-title">📋 Summary Tables</h2>
         <div class="controls">
             <div class="control-group">
                 <label for="rowField">🔹 Group by (main category)</label>
@@ -286,7 +371,6 @@
 
         <div class="summary-section" id="output">
             <div class="table-wrapper" id="tableContainer">
-                <!-- table will appear here -->
                 <div style="padding: 3rem; text-align: center; color: #9ca3af;">
                     Select groupings and click "Generate Summary"
                 </div>
@@ -304,6 +388,25 @@
                 <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
                 <span>Empty values are shown as <strong>(blank)</strong>. All numbers are counts of responses.</span>
             </div>
+        </div>
+
+        <!-- ========== CHI‑SQUARE SECTION ========== -->
+        <h2 class="section-title">🔬 Chi‑Square Test of Independence</h2>
+        <div class="controls">
+            <div class="control-group">
+                <label for="chiVar1">Variable 1</label>
+                <select id="chiVar1"></select>
+            </div>
+            <div class="control-group">
+                <label for="chiVar2">Variable 2</label>
+                <select id="chiVar2"></select>
+            </div>
+            <div class="button-group">
+                <button class="btn-secondary" id="runChi" disabled>Run Chi‑Square Test</button>
+            </div>
+        </div>
+        <div id="chiResult" class="chi-result" style="display: none;">
+            <!-- dynamic result injected here -->
         </div>
     </div>
 </div>
@@ -325,12 +428,17 @@
             rawData = results.data;
             headers = results.meta.fields.filter(h => !excludeColumns.includes(h));
 
-            // Populate dropdowns
+            // Populate dropdowns for summary
             populateDropdown('rowField', headers);
             populateDropdown('colField', headers, true);
 
-            // Enable button
+            // Populate dropdowns for chi‑square
+            populateDropdown('chiVar1', headers);
+            populateDropdown('chiVar2', headers);
+
+            // Enable buttons
             document.getElementById('generate').disabled = false;
+            document.getElementById('runChi').disabled = false;
         },
         error: function(err) {
             console.error('CSV error:', err);
@@ -350,13 +458,13 @@
         options.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt;
-            // Clean label: remove quotes, newlines, extra spaces
             let label = opt.replace(/["\n\r]/g, '').trim();
             option.textContent = label;
             select.appendChild(option);
         });
     }
 
+    // ========== SUMMARY GENERATION ==========
     document.getElementById('generate').addEventListener('click', function() {
         const rowField = document.getElementById('rowField').value;
         const colField = document.getElementById('colField').value;
@@ -366,13 +474,11 @@
             return;
         }
 
-        // Show loading state (optional)
         const btn = document.getElementById('generate');
         const originalText = btn.innerHTML;
         btn.innerHTML = '<span class="loading"></span> Generating...';
         btn.disabled = true;
 
-        // Use setTimeout to allow UI update before heavy work
         setTimeout(() => {
             generateSummary(rowField, colField);
             btn.innerHTML = originalText;
@@ -381,7 +487,6 @@
     });
 
     function generateSummary(rowField, colField) {
-        // Build pivot structure
         const pivot = {};
 
         rawData.forEach(row => {
@@ -393,7 +498,6 @@
             pivot[rowKey][colKey]++;
         });
 
-        // Get all unique column keys
         let allColKeys = [];
         if (colField) {
             const colSet = new Set();
@@ -405,20 +509,13 @@
             allColKeys = ['_count_'];
         }
 
-        // Prepare table HTML
         let html = '<table><thead><tr>';
-
-        // First column header
         html += '<th>' + rowField + '</th>';
-
-        // Column headers
         allColKeys.forEach(key => {
             let displayKey = key;
             if (key === '_count_') displayKey = 'Count';
             html += '<th>' + displayKey + '</th>';
         });
-
-        // If there is a breakdown, add a "Total" column
         if (colField) {
             html += '<th>Total</th>';
         }
@@ -449,7 +546,6 @@
             chartData.push(rowSum);
         });
 
-        // If there is a breakdown, add a footer row with column totals
         if (colField) {
             html += '<tr class="total-row"><td><strong>Total</strong></td>';
             allColKeys.forEach(colKey => {
@@ -461,8 +557,6 @@
             });
             html += '<td><strong>' + grandTotal + '</strong></td></tr>';
         } else {
-            // If no breakdown, we already have counts, and the total is the sum of all counts
-            // Optionally add a total row
             const total = chartData.reduce((a, b) => a + b, 0);
             html += '<tr class="total-row"><td><strong>Total</strong></td><td><strong>' + total + '</strong></td></tr>';
         }
@@ -470,12 +564,10 @@
         html += '</tbody></table>';
         document.getElementById('tableContainer').innerHTML = html;
 
-        // Update chart
         const chartLabel = colField ? `by ${rowField} (total responses)` : `by ${rowField}`;
         document.getElementById('chartLabel').innerText = chartLabel;
         renderChart(chartLabels, chartData, rowField);
 
-        // Show chart container
         document.getElementById('chartContainer').style.display = 'block';
     }
 
@@ -483,7 +575,6 @@
         const ctx = document.getElementById('chart').getContext('2d');
         if (window.myChart) window.myChart.destroy();
 
-        // Generate a nice gradient (optional)
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
         gradient.addColorStop(0, '#3b82f6');
         gradient.addColorStop(1, '#2563eb');
@@ -504,24 +595,146 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { backgroundColor: '#1f2937' }
-                },
+                plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1f2937' } },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        precision: 0,
-                        grid: { color: '#e5e7eb' },
-                        title: { display: true, text: 'Number of responses' }
-                    },
-                    x: {
-                        grid: { display: false },
-                        ticks: { maxRotation: 45, minRotation: 30 }
-                    }
+                    y: { beginAtZero: true, precision: 0, grid: { color: '#e5e7eb' }, title: { display: true, text: 'Number of responses' } },
+                    x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 30 } }
                 }
             }
         });
+    }
+
+    // ========== CHI‑SQUARE TEST ==========
+    document.getElementById('runChi').addEventListener('click', function() {
+        const var1 = document.getElementById('chiVar1').value;
+        const var2 = document.getElementById('chiVar2').value;
+
+        if (!var1 || !var2) {
+            alert('Please select two variables.');
+            return;
+        }
+        if (var1 === var2) {
+            alert('Please select two different variables.');
+            return;
+        }
+
+        const btn = document.getElementById('runChi');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="loading"></span> Running test...';
+        btn.disabled = true;
+
+        setTimeout(() => {
+            runChiSquare(var1, var2);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 10);
+    });
+
+    function runChiSquare(var1, var2) {
+        // Build contingency table
+        const table = {};  // table[row][col] = count
+        const rowSet = new Set();
+        const colSet = new Set();
+
+        rawData.forEach(row => {
+            const rowVal = row[var1] || '(blank)';
+            const colVal = row[var2] || '(blank)';
+            rowSet.add(rowVal);
+            colSet.add(colVal);
+
+            if (!table[rowVal]) table[rowVal] = {};
+            if (!table[rowVal][colVal]) table[rowVal][colVal] = 0;
+            table[rowVal][colVal]++;
+        });
+
+        const rowKeys = Array.from(rowSet).sort();
+        const colKeys = Array.from(colSet).sort();
+
+        // Row totals and grand total
+        const rowTotals = {};
+        let grandTotal = 0;
+        rowKeys.forEach(r => {
+            let sum = 0;
+            colKeys.forEach(c => {
+                sum += table[r]?.[c] || 0;
+            });
+            rowTotals[r] = sum;
+            grandTotal += sum;
+        });
+
+        const colTotals = {};
+        colKeys.forEach(c => {
+            let sum = 0;
+            rowKeys.forEach(r => {
+                sum += table[r]?.[c] || 0;
+            });
+            colTotals[c] = sum;
+        });
+
+        // Compute chi‑square
+        let chiSq = 0;
+        let df = (rowKeys.length - 1) * (colKeys.length - 1);
+        let expectedFreqs = [];
+        let lowExpectedCount = 0;
+        let totalCells = rowKeys.length * colKeys.length;
+
+        rowKeys.forEach(r => {
+            colKeys.forEach(c => {
+                const observed = table[r]?.[c] || 0;
+                const expected = (rowTotals[r] * colTotals[c]) / grandTotal;
+                expectedFreqs.push(expected);
+                if (expected < 5) lowExpectedCount++;
+                if (expected > 0) {
+                    chiSq += Math.pow(observed - expected, 2) / expected;
+                }
+            });
+        });
+
+        // p‑value (upper tail) using jStat
+        const pValue = 1 - jStat.chisquare.cdf(chiSq, df);
+
+        // Build result HTML
+        let html = '<h4>🔍 Chi‑Square Test Result</h4>';
+
+        // Contingency table (simplified)
+        html += '<div class="chi-table-small"><table><thead><tr><th></th>';
+        colKeys.forEach(c => html += '<th>' + c + '</th>');
+        html += '<th>Total</th></tr></thead><tbody>';
+        rowKeys.forEach(r => {
+            html += '<tr><td class="row-header">' + r + '</td>';
+            let rowSum = 0;
+            colKeys.forEach(c => {
+                const val = table[r]?.[c] || 0;
+                html += '<td>' + val + '</td>';
+                rowSum += val;
+            });
+            html += '<td><strong>' + rowSum + '</strong></td></tr>';
+        });
+        // Column totals row
+        html += '<tr class="total-row"><td><strong>Total</strong></td>';
+        colKeys.forEach(c => html += '<td><strong>' + colTotals[c] + '</strong></td>');
+        html += '<td><strong>' + grandTotal + '</strong></td></tr>';
+        html += '</tbody></table></div>';
+
+        // Test statistics
+        html += '<p><span class="stat-highlight">Chi‑Square:</span> ' + chiSq.toFixed(4) + '</p>';
+        html += '<p><span class="stat-highlight">Degrees of freedom:</span> ' + df + '</p>';
+        html += '<p><span class="stat-highlight">p‑value:</span> ' + pValue.toExponential(4) + '</p>';
+
+        // Interpretation
+        const significant = pValue < 0.05;
+        html += '<p><span class="stat-highlight">Interpretation:</span> ';
+        html += significant ? 'There is a significant association between the variables (p < 0.05).' : 'No significant association detected (p ≥ 0.05).';
+        html += '</p>';
+
+        // Warning about expected frequencies
+        const lowExpectedPercent = (lowExpectedCount / totalCells) * 100;
+        if (lowExpectedPercent > 20) {
+            html += '<div class="chi-warning">⚠️ Caution: ' + lowExpectedPercent.toFixed(1) + '% of cells have expected count less than 5. The chi‑square approximation may be unreliable.</div>';
+        }
+
+        document.getElementById('chiResult').innerHTML = html;
+        document.getElementById('chiResult').style.display = 'block';
     }
 </script>
 </body>
