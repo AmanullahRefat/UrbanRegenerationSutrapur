@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Survey Explorer + Chi‑Square</title>
+    <title>Survey Explorer + Chi‑Square + Enhanced Charts</title>
     <!-- Papa Parse -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- Chart.js -->
@@ -121,6 +121,8 @@
         .button-group {
             display: flex;
             align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
         }
 
         .btn-primary {
@@ -171,6 +173,23 @@
 
         .btn-secondary:active {
             transform: scale(0.98);
+        }
+
+        .btn-outline {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.75rem;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+            white-space: nowrap;
+        }
+
+        .btn-outline:hover {
+            background: #f9fafb;
         }
 
         .loading {
@@ -249,15 +268,8 @@
             gap: 0.5rem;
         }
 
-        .note svg {
-            width: 1rem;
-            height: 1rem;
-            fill: none;
-            stroke: currentColor;
-        }
-
         .chart-container {
-            margin-top: 3rem;
+            margin-top: 2rem;
             background: white;
             border-radius: 1rem;
             padding: 1.5rem;
@@ -268,13 +280,44 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
         }
 
         .chart-header h3 {
             font-size: 1.25rem;
             font-weight: 600;
             color: #1f2937;
+        }
+
+        .chart-controls {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+            font-size: 0.9rem;
+            color: #4b5563;
+            cursor: pointer;
+        }
+
+        .radio-group input[type="radio"] {
+            accent-color: #2563eb;
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
         }
 
         .badge {
@@ -289,6 +332,13 @@
         canvas {
             max-height: 400px;
             width: 100% !important;
+        }
+
+        .action-buttons {
+            margin-top: 1rem;
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
         }
 
         /* Chi‑Square results styling */
@@ -345,8 +395,8 @@
 <body>
 <div class="card">
     <div class="card-header">
-        <h1>📊 Survey Explorer with Chi‑Square Test</h1>
-        <p>Group responses and test relationships between any two questions.</p>
+        <h1>📊 Survey Explorer with Enhanced Charts</h1>
+        <p>Group responses, visualise with bar/pie charts, copy tables, and test relationships.</p>
     </div>
     <div class="card-body">
         <!-- ========== SUMMARY SECTION ========== -->
@@ -376,10 +426,24 @@
                 </div>
             </div>
 
+            <!-- Action buttons for table -->
+            <div class="action-buttons" id="tableActions" style="display: none;">
+                <button class="btn-outline" id="copyTableBtn">📋 Copy Table</button>
+                <button class="btn-outline" id="downloadCsvBtn">⬇️ Download CSV</button>
+            </div>
+
+            <!-- Chart area with controls -->
             <div class="chart-container" id="chartContainer" style="display: none;">
                 <div class="chart-header">
                     <h3>📈 Response distribution</h3>
-                    <span class="badge" id="chartLabel"></span>
+                    <div class="chart-controls">
+                        <div class="radio-group" id="chartTypeGroup">
+                            <label><input type="radio" name="chartType" value="bar" checked> Bar (grouped)</label>
+                            <label><input type="radio" name="chartType" value="stacked"> Bar (stacked)</label>
+                            <label><input type="radio" name="chartType" value="pie"> Pie</label>
+                        </div>
+                        <span class="badge" id="chartLabel"></span>
+                    </div>
                 </div>
                 <canvas id="chart"></canvas>
             </div>
@@ -418,6 +482,17 @@
 
     let rawData = [];
     let headers = [];
+
+    // Store current summary state for chart updates and copy
+    let currentSummary = {
+        rowField: null,
+        colField: null,
+        pivotData: null,
+        rowKeys: [],
+        colKeys: [],
+        rowTotals: {},
+        grandTotal: 0
+    };
 
     // Fetch and parse CSV
     Papa.parse(csvUrl, {
@@ -487,31 +562,71 @@
     });
 
     function generateSummary(rowField, colField) {
+        // Build pivot
         const pivot = {};
-
         rawData.forEach(row => {
             const rowKey = row[rowField] || '(blank)';
             const colKey = colField ? (row[colField] || '(blank)') : '_count_';
-
             if (!pivot[rowKey]) pivot[rowKey] = {};
             if (!pivot[rowKey][colKey]) pivot[rowKey][colKey] = 0;
             pivot[rowKey][colKey]++;
         });
 
-        let allColKeys = [];
+        // Get column keys
+        let colKeys = [];
         if (colField) {
             const colSet = new Set();
             Object.values(pivot).forEach(row => {
                 Object.keys(row).forEach(k => colSet.add(k));
             });
-            allColKeys = Array.from(colSet).sort();
+            colKeys = Array.from(colSet).sort();
         } else {
-            allColKeys = ['_count_'];
+            colKeys = ['_count_'];
         }
+
+        const rowKeys = Object.keys(pivot).sort();
+        const rowTotals = {};
+        let grandTotal = 0;
+        rowKeys.forEach(r => {
+            let sum = 0;
+            colKeys.forEach(c => {
+                sum += pivot[r][c] || 0;
+            });
+            rowTotals[r] = sum;
+            grandTotal += sum;
+        });
+
+        // Store for later use (chart, copy)
+        currentSummary = {
+            rowField,
+            colField,
+            pivotData: pivot,
+            rowKeys,
+            colKeys,
+            rowTotals,
+            grandTotal
+        };
+
+        // Render table
+        renderSummaryTable();
+
+        // Show action buttons
+        document.getElementById('tableActions').style.display = 'flex';
+
+        // Prepare chart data and show chart container
+        updateChartType(); // initial render with default (bar)
+        document.getElementById('chartContainer').style.display = 'block';
+
+        // Attach chart type radio listeners (if not already)
+        attachChartTypeListeners();
+    }
+
+    function renderSummaryTable() {
+        const { rowField, colField, pivotData, rowKeys, colKeys, rowTotals, grandTotal } = currentSummary;
 
         let html = '<table><thead><tr>';
         html += '<th>' + rowField + '</th>';
-        allColKeys.forEach(key => {
+        colKeys.forEach(key => {
             let displayKey = key;
             if (key === '_count_') displayKey = 'Count';
             html += '<th>' + displayKey + '</th>';
@@ -521,88 +636,236 @@
         }
         html += '</tr></thead><tbody>';
 
-        const rowKeys = Object.keys(pivot).sort();
-        let grandTotal = 0;
-        const chartLabels = [];
-        const chartData = [];
-
         rowKeys.forEach(rowKey => {
             html += '<tr><td class="row-header">' + rowKey + '</td>';
-            let rowSum = 0;
-
-            allColKeys.forEach(colKey => {
-                const count = pivot[rowKey][colKey] || 0;
+            colKeys.forEach(colKey => {
+                const count = pivotData[rowKey][colKey] || 0;
                 html += '<td>' + count + '</td>';
-                rowSum += count;
-                grandTotal += count;
             });
-
             if (colField) {
-                html += '<td><strong>' + rowSum + '</strong></td>';
+                html += '<td><strong>' + rowTotals[rowKey] + '</strong></td>';
             }
             html += '</tr>';
-
-            chartLabels.push(rowKey);
-            chartData.push(rowSum);
         });
 
         if (colField) {
+            // Column totals
             html += '<tr class="total-row"><td><strong>Total</strong></td>';
-            allColKeys.forEach(colKey => {
+            colKeys.forEach(colKey => {
                 let colSum = 0;
                 rowKeys.forEach(rowKey => {
-                    colSum += pivot[rowKey][colKey] || 0;
+                    colSum += pivotData[rowKey][colKey] || 0;
                 });
                 html += '<td><strong>' + colSum + '</strong></td>';
             });
             html += '<td><strong>' + grandTotal + '</strong></td></tr>';
         } else {
-            const total = chartData.reduce((a, b) => a + b, 0);
-            html += '<tr class="total-row"><td><strong>Total</strong></td><td><strong>' + total + '</strong></td></tr>';
+            // Only one column: add a total row
+            html += '<tr class="total-row"><td><strong>Total</strong></td><td><strong>' + grandTotal + '</strong></td></tr>';
         }
 
         html += '</tbody></table>';
         document.getElementById('tableContainer').innerHTML = html;
 
-        const chartLabel = colField ? `by ${rowField} (total responses)` : `by ${rowField}`;
-        document.getElementById('chartLabel').innerText = chartLabel;
-        renderChart(chartLabels, chartData, rowField);
-
-        document.getElementById('chartContainer').style.display = 'block';
+        // Update chart label
+        const label = currentSummary.colField 
+            ? `by ${currentSummary.rowField} (breakdown by ${currentSummary.colField})`
+            : `by ${currentSummary.rowField}`;
+        document.getElementById('chartLabel').innerText = label;
     }
 
-    function renderChart(labels, data, rowField) {
+    // Chart type switching
+    function attachChartTypeListeners() {
+        const radios = document.querySelectorAll('input[name="chartType"]');
+        radios.forEach(r => r.removeEventListener('change', chartTypeHandler));
+        radios.forEach(r => r.addEventListener('change', chartTypeHandler));
+    }
+
+    function chartTypeHandler() {
+        updateChartType();
+    }
+
+    function updateChartType() {
+        const selected = document.querySelector('input[name="chartType"]:checked')?.value;
+        if (!selected) return;
+
+        const { rowField, colField, pivotData, rowKeys, colKeys, rowTotals } = currentSummary;
+
+        // Disable pie if two dimensions
+        const pieRadio = document.querySelector('input[value="pie"]');
+        if (colField && colKeys.length > 0 && colKeys[0] !== '_count_') {
+            pieRadio.disabled = true;
+            if (selected === 'pie') {
+                // switch to bar
+                document.querySelector('input[value="bar"]').checked = true;
+                updateChartType(); // recursive call with new selection
+                return;
+            }
+        } else {
+            pieRadio.disabled = false;
+        }
+
         const ctx = document.getElementById('chart').getContext('2d');
         if (window.myChart) window.myChart.destroy();
 
-        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, '#3b82f6');
-        gradient.addColorStop(1, '#2563eb');
-
-        window.myChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: `Number of responses by ${rowField}`,
-                    data: data,
-                    backgroundColor: gradient,
-                    borderRadius: 6,
-                    barPercentage: 0.7,
-                    categoryPercentage: 0.8,
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: true,
-                plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1f2937' } },
-                scales: {
-                    y: { beginAtZero: true, precision: 0, grid: { color: '#e5e7eb' }, title: { display: true, text: 'Number of responses' } },
-                    x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 30 } }
+        if (selected === 'pie') {
+            // Pie chart: only one dimension (row totals)
+            const labels = rowKeys;
+            const data = rowKeys.map(r => rowTotals[r]);
+            window.myChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: generateColors(labels.length),
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw} responses` } }
+                    }
                 }
+            });
+        } else if (selected === 'bar' || selected === 'stacked') {
+            // Grouped or stacked bar
+            const labels = rowKeys;
+            const datasets = [];
+
+            if (colField && colKeys[0] !== '_count_') {
+                // Multiple columns
+                const colors = generateColors(colKeys.length);
+                colKeys.forEach((col, idx) => {
+                    datasets.push({
+                        label: col,
+                        data: rowKeys.map(r => pivotData[r][col] || 0),
+                        backgroundColor: colors[idx],
+                        stack: selected === 'stacked' ? 'stack' : undefined,
+                    });
+                });
+            } else {
+                // Single column
+                datasets.push({
+                    label: 'Count',
+                    data: rowKeys.map(r => rowTotals[r]),
+                    backgroundColor: '#3b82f6',
+                });
             }
-        });
+
+            window.myChart = new Chart(ctx, {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, precision: 0, title: { display: true, text: 'Number of responses' } }
+                    }
+                }
+            });
+        }
     }
+
+    function generateColors(n) {
+        const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+        return Array.from({ length: n }, (_, i) => palette[i % palette.length]);
+    }
+
+    // ========== COPY TABLE ==========
+    document.getElementById('copyTableBtn').addEventListener('click', function() {
+        const { rowField, colField, pivotData, rowKeys, colKeys, rowTotals, grandTotal } = currentSummary;
+        if (!rowField) return;
+
+        // Build TSV (tab-separated)
+        let rows = [];
+
+        // Header
+        let header = [rowField];
+        colKeys.forEach(k => header.push(k === '_count_' ? 'Count' : k));
+        if (colField) header.push('Total');
+        rows.push(header.join('\t'));
+
+        // Data rows
+        rowKeys.forEach(r => {
+            let row = [r];
+            colKeys.forEach(c => row.push(pivotData[r][c] || 0));
+            if (colField) row.push(rowTotals[r]);
+            rows.push(row.join('\t'));
+        });
+
+        // Total row
+        let totalRow = ['Total'];
+        if (colField) {
+            colKeys.forEach(c => {
+                let sum = 0;
+                rowKeys.forEach(r => sum += pivotData[r][c] || 0);
+                totalRow.push(sum);
+            });
+            totalRow.push(grandTotal);
+        } else {
+            totalRow.push(grandTotal);
+        }
+        rows.push(totalRow.join('\t'));
+
+        const tsv = rows.join('\n');
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(tsv).then(() => {
+            alert('Table copied to clipboard! You can paste it into Excel or Word.');
+        }).catch(() => {
+            alert('Failed to copy. You can download as CSV instead.');
+        });
+    });
+
+    // ========== DOWNLOAD CSV ==========
+    document.getElementById('downloadCsvBtn').addEventListener('click', function() {
+        const { rowField, colField, pivotData, rowKeys, colKeys, rowTotals, grandTotal } = currentSummary;
+        if (!rowField) return;
+
+        let csv = '';
+
+        // Header
+        let header = [rowField];
+        colKeys.forEach(k => header.push(k === '_count_' ? 'Count' : k));
+        if (colField) header.push('Total');
+        csv += header.join(',') + '\n';
+
+        // Data rows
+        rowKeys.forEach(r => {
+            let row = [r];
+            colKeys.forEach(c => row.push(pivotData[r][c] || 0));
+            if (colField) row.push(rowTotals[r]);
+            csv += row.join(',') + '\n';
+        });
+
+        // Total row
+        let totalRow = ['Total'];
+        if (colField) {
+            colKeys.forEach(c => {
+                let sum = 0;
+                rowKeys.forEach(r => sum += pivotData[r][c] || 0);
+                totalRow.push(sum);
+            });
+            totalRow.push(grandTotal);
+        } else {
+            totalRow.push(grandTotal);
+        }
+        csv += totalRow.join(',');
+
+        // Trigger download
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'summary.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    });
 
     // ========== CHI‑SQUARE TEST ==========
     document.getElementById('runChi').addEventListener('click', function() {
@@ -674,7 +937,6 @@
         // Compute chi‑square
         let chiSq = 0;
         let df = (rowKeys.length - 1) * (colKeys.length - 1);
-        let expectedFreqs = [];
         let lowExpectedCount = 0;
         let totalCells = rowKeys.length * colKeys.length;
 
@@ -682,7 +944,6 @@
             colKeys.forEach(c => {
                 const observed = table[r]?.[c] || 0;
                 const expected = (rowTotals[r] * colTotals[c]) / grandTotal;
-                expectedFreqs.push(expected);
                 if (expected < 5) lowExpectedCount++;
                 if (expected > 0) {
                     chiSq += Math.pow(observed - expected, 2) / expected;
@@ -696,7 +957,7 @@
         // Build result HTML
         let html = '<h4>🔍 Chi‑Square Test Result</h4>';
 
-        // Contingency table (simplified)
+        // Contingency table
         html += '<div class="chi-table-small"><table><thead><tr><th></th>';
         colKeys.forEach(c => html += '<th>' + c + '</th>');
         html += '<th>Total</th></tr></thead><tbody>';
