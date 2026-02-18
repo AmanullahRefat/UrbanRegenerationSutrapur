@@ -3,83 +3,338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Survey Data Pivot</title>
+    <title>Survey Summary Explorer</title>
     <!-- Papa Parse for CSV parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <!-- Chart.js for charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
-        select, button { padding: 8px; margin: 5px; font-size: 16px; }
-        button { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; }
-        button:hover { background: #0056b3; }
-        .controls { margin-bottom: 20px; }
-        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-        th { background-color: #f2f2f2; }
-        .chart-container { width: 80%; margin: 30px auto; }
-        .note { color: #666; font-size: 0.9em; margin-top: 10px; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+
+        .card {
+            max-width: 1400px;
+            width: 100%;
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            overflow: hidden;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white;
+            padding: 2rem 2.5rem;
+        }
+
+        .card-header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-header p {
+            font-size: 1rem;
+            opacity: 0.9;
+            max-width: 600px;
+        }
+
+        .card-body {
+            padding: 2.5rem;
+        }
+
+        .controls {
+            background: #f9fafb;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 1.5rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .control-group {
+            flex: 1 1 250px;
+        }
+
+        .control-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #4b5563;
+            margin-bottom: 0.5rem;
+        }
+
+        .control-group select {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.75rem;
+            background: white;
+            font-size: 1rem;
+            color: #1f2937;
+            transition: all 0.15s;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20' stroke='%236b7280'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1.25rem;
+        }
+
+        .control-group select:focus {
+            outline: none;
+            border-color: #2563eb;
+            ring: 2px solid #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .button-group {
+            display: flex;
+            align-items: center;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 0.75rem 2rem;
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+            white-space: nowrap;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-primary:active {
+            transform: scale(0.98);
+        }
+
+        .btn-primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.5rem;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .summary-section {
+            margin-top: 2rem;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 1rem;
+            border: 1px solid #e5e7eb;
+            background: white;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+            min-width: 600px;
+        }
+
+        th {
+            background: #f9fafb;
+            color: #1f2937;
+            font-weight: 600;
+            padding: 1rem 1rem;
+            text-align: center;
+            border-bottom: 2px solid #e5e7eb;
+            white-space: nowrap;
+        }
+
+        td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .row-header {
+            font-weight: 500;
+            background-color: #f9fafb;
+            text-align: left;
+        }
+
+        .total-row {
+            background-color: #f3f4f6;
+            font-weight: 600;
+        }
+
+        .total-row td {
+            border-top: 2px solid #d1d5db;
+        }
+
+        .note {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .note svg {
+            width: 1rem;
+            height: 1rem;
+            fill: none;
+            stroke: currentColor;
+        }
+
+        .chart-container {
+            margin-top: 3rem;
+            background: white;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .chart-header h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .badge {
+            background: #e0f2fe;
+            color: #0369a1;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        canvas {
+            max-height: 400px;
+            width: 100% !important;
+        }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>Survey Data Explorer</h1>
-    <p>Select the grouping fields below. The table shows the number of responses for each combination.</p>
-
-    <div class="controls">
-        <label for="rowField">Rows (main grouping):</label>
-        <select id="rowField"></select>
-
-        <label for="colField">Columns (optional second grouping):</label>
-        <select id="colField">
-            <option value="">-- None --</option>
-        </select>
-
-        <button id="generate">Generate Pivot</button>
+<div class="card">
+    <div class="card-header">
+        <h1>📊 Survey Summary Explorer</h1>
+        <p>Choose how you want to group the responses. The table and chart will update automatically.</p>
     </div>
+    <div class="card-body">
+        <div class="controls">
+            <div class="control-group">
+                <label for="rowField">🔹 Group by (main category)</label>
+                <select id="rowField"></select>
+            </div>
+            <div class="control-group">
+                <label for="colField">🔸 Break down by (optional)</label>
+                <select id="colField">
+                    <option value="">— None —</option>
+                </select>
+            </div>
+            <div class="button-group">
+                <button class="btn-primary" id="generate" disabled>
+                    <span>Generate Summary</span>
+                </button>
+            </div>
+        </div>
 
-    <div id="output">
-        <div id="tableContainer"></div>
-        <div class="chart-container">
-            <canvas id="chart"></canvas>
+        <div class="summary-section" id="output">
+            <div class="table-wrapper" id="tableContainer">
+                <!-- table will appear here -->
+                <div style="padding: 3rem; text-align: center; color: #9ca3af;">
+                    Select groupings and click "Generate Summary"
+                </div>
+            </div>
+
+            <div class="chart-container" id="chartContainer" style="display: none;">
+                <div class="chart-header">
+                    <h3>📈 Response distribution</h3>
+                    <span class="badge" id="chartLabel"></span>
+                </div>
+                <canvas id="chart"></canvas>
+            </div>
+
+            <div class="note">
+                <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/></svg>
+                <span>Empty values are shown as <strong>(blank)</strong>. All numbers are counts of responses.</span>
+            </div>
         </div>
     </div>
-    <p class="note">* All counts are numbers of responses. The chart shows the row totals (or column totals if no rows selected).</p>
 </div>
 
 <script>
-    // URL of the CSV file (assumes it's in the same folder)
+    // Configuration
     const csvUrl = 'data.csv';
-
-    // Columns that are probably not useful for pivoting (adjust as needed)
     const excludeColumns = ['Timestamp', 'Your Name :', 'Column 36', 'Column 1'];
 
-    let rawData = [];              // array of objects, each representing a row
-    let headers = [];              // array of column names
+    let rawData = [];
+    let headers = [];
 
-    // Fetch and parse the CSV when the page loads
+    // Fetch and parse CSV
     Papa.parse(csvUrl, {
         download: true,
         header: true,
         skipEmptyLines: true,
         complete: function(results) {
             rawData = results.data;
-            headers = results.meta.fields;
-
-            // Filter out unwanted columns
-            const filteredHeaders = headers.filter(h => !excludeColumns.includes(h));
+            headers = results.meta.fields.filter(h => !excludeColumns.includes(h));
 
             // Populate dropdowns
-            populateDropdown('rowField', filteredHeaders);
-            populateDropdown('colField', filteredHeaders, true); // include empty option
+            populateDropdown('rowField', headers);
+            populateDropdown('colField', headers, true);
 
-            // Enable the generate button
+            // Enable button
             document.getElementById('generate').disabled = false;
         },
         error: function(err) {
-            console.error('CSV parsing error:', err);
-            document.getElementById('tableContainer').innerHTML = '<p style="color:red">Error loading CSV. Make sure data.csv is present.</p>';
+            console.error('CSV error:', err);
+            document.getElementById('tableContainer').innerHTML = '<p style="color:red; padding:2rem;">Failed to load data.csv. Make sure it exists in the same folder.</p>';
         }
     });
 
@@ -89,13 +344,13 @@
         if (addEmpty) {
             const opt = document.createElement('option');
             opt.value = '';
-            opt.textContent = '-- None --';
+            opt.textContent = '— None —';
             select.appendChild(opt);
         }
         options.forEach(opt => {
             const option = document.createElement('option');
             option.value = opt;
-            // Clean up the label (remove extra quotes, newlines etc.)
+            // Clean label: remove quotes, newlines, extra spaces
             let label = opt.replace(/["\n\r]/g, '').trim();
             option.textContent = label;
             select.appendChild(option);
@@ -107,23 +362,38 @@
         const colField = document.getElementById('colField').value;
 
         if (!rowField) {
-            alert('Please select a Rows field.');
+            alert('Please select a "Group by" field.');
             return;
         }
 
-        // Build pivot table
+        // Show loading state (optional)
+        const btn = document.getElementById('generate');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="loading"></span> Generating...';
+        btn.disabled = true;
+
+        // Use setTimeout to allow UI update before heavy work
+        setTimeout(() => {
+            generateSummary(rowField, colField);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 10);
+    });
+
+    function generateSummary(rowField, colField) {
+        // Build pivot structure
         const pivot = {};
 
         rawData.forEach(row => {
             const rowKey = row[rowField] || '(blank)';
-            const colKey = colField ? (row[colField] || '(blank)') : '_total_';
+            const colKey = colField ? (row[colField] || '(blank)') : '_count_';
 
             if (!pivot[rowKey]) pivot[rowKey] = {};
             if (!pivot[rowKey][colKey]) pivot[rowKey][colKey] = 0;
             pivot[rowKey][colKey]++;
         });
 
-        // Get all unique column keys (if colField is used)
+        // Get all unique column keys
         let allColKeys = [];
         if (colField) {
             const colSet = new Set();
@@ -132,39 +402,46 @@
             });
             allColKeys = Array.from(colSet).sort();
         } else {
-            allColKeys = ['_total_'];
+            allColKeys = ['_count_'];
         }
 
-        // Build HTML table
-        let html = '<table><thead><tr><th>' + rowField + '</th>';
+        // Prepare table HTML
+        let html = '<table><thead><tr>';
+
+        // First column header
+        html += '<th>' + rowField + '</th>';
 
         // Column headers
         allColKeys.forEach(key => {
-            html += '<th>' + (key === '_total_' ? 'Total' : key) + '</th>';
+            let displayKey = key;
+            if (key === '_count_') displayKey = 'Count';
+            html += '<th>' + displayKey + '</th>';
         });
-        // Optionally a row total column (already included as '_total_' if no colField)
+
+        // If there is a breakdown, add a "Total" column
         if (colField) {
-            html += '<th>Row Total</th>';
+            html += '<th>Total</th>';
         }
         html += '</tr></thead><tbody>';
 
-        // Data rows and totals
         const rowKeys = Object.keys(pivot).sort();
         let grandTotal = 0;
         const chartLabels = [];
         const chartData = [];
 
         rowKeys.forEach(rowKey => {
-            html += '<tr><td>' + rowKey + '</td>';
+            html += '<tr><td class="row-header">' + rowKey + '</td>';
             let rowSum = 0;
+
             allColKeys.forEach(colKey => {
                 const count = pivot[rowKey][colKey] || 0;
                 html += '<td>' + count + '</td>';
                 rowSum += count;
                 grandTotal += count;
             });
+
             if (colField) {
-                html += '<td>' + rowSum + '</td>';
+                html += '<td><strong>' + rowSum + '</strong></td>';
             }
             html += '</tr>';
 
@@ -172,16 +449,9 @@
             chartData.push(rowSum);
         });
 
-        // If no columns selected, we already have row totals in the only column; we can still use rowSum for chart
-        if (!colField) {
-            // chartLabels and chartData already set above (rowKeys loop)
-        } else {
-            // chart already uses row sums
-        }
-
-        // Optionally add a total row at bottom
+        // If there is a breakdown, add a footer row with column totals
         if (colField) {
-            html += '<tr><td><strong>Column Total</strong></td>';
+            html += '<tr class="total-row"><td><strong>Total</strong></td>';
             allColKeys.forEach(colKey => {
                 let colSum = 0;
                 rowKeys.forEach(rowKey => {
@@ -190,36 +460,65 @@
                 html += '<td><strong>' + colSum + '</strong></td>';
             });
             html += '<td><strong>' + grandTotal + '</strong></td></tr>';
+        } else {
+            // If no breakdown, we already have counts, and the total is the sum of all counts
+            // Optionally add a total row
+            const total = chartData.reduce((a, b) => a + b, 0);
+            html += '<tr class="total-row"><td><strong>Total</strong></td><td><strong>' + total + '</strong></td></tr>';
         }
 
         html += '</tbody></table>';
         document.getElementById('tableContainer').innerHTML = html;
 
         // Update chart
+        const chartLabel = colField ? `by ${rowField} (total responses)` : `by ${rowField}`;
+        document.getElementById('chartLabel').innerText = chartLabel;
         renderChart(chartLabels, chartData, rowField);
-    });
 
-    function renderChart(labels, data, label) {
+        // Show chart container
+        document.getElementById('chartContainer').style.display = 'block';
+    }
+
+    function renderChart(labels, data, rowField) {
         const ctx = document.getElementById('chart').getContext('2d');
-        // Destroy previous chart if it exists
         if (window.myChart) window.myChart.destroy();
+
+        // Generate a nice gradient (optional)
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, '#3b82f6');
+        gradient.addColorStop(1, '#2563eb');
 
         window.myChart = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: labels,
                 datasets: [{
-                    label: 'Number of responses by ' + label,
+                    label: `Number of responses by ${rowField}`,
                     data: data,
-                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
+                    backgroundColor: gradient,
+                    borderRadius: 6,
+                    barPercentage: 0.7,
+                    categoryPercentage: 0.8,
                 }]
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { backgroundColor: '#1f2937' }
+                },
                 scales: {
-                    y: { beginAtZero: true, precision: 0 }
+                    y: {
+                        beginAtZero: true,
+                        precision: 0,
+                        grid: { color: '#e5e7eb' },
+                        title: { display: true, text: 'Number of responses' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { maxRotation: 45, minRotation: 30 }
+                    }
                 }
             }
         });
