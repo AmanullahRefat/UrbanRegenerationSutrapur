@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Survey Data Pivot</title>
+    <!-- Papa Parse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <!-- Chart.js for charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; }
+        select, button { padding: 8px; margin: 5px; font-size: 16px; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        .controls { margin-bottom: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th { background-color: #f2f2f2; }
+        .chart-container { width: 80%; margin: 30px auto; }
+        .note { color: #666; font-size: 0.9em; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Survey Data Explorer</h1>
+    <p>Select the grouping fields below. The table shows the number of responses for each combination.</p>
+
+    <div class="controls">
+        <label for="rowField">Rows (main grouping):</label>
+        <select id="rowField"></select>
+
+        <label for="colField">Columns (optional second grouping):</label>
+        <select id="colField">
+            <option value="">-- None --</option>
+        </select>
+
+        <button id="generate">Generate Pivot</button>
+    </div>
+
+    <div id="output">
+        <div id="tableContainer"></div>
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+        </div>
+    </div>
+    <p class="note">* All counts are numbers of responses. The chart shows the row totals (or column totals if no rows selected).</p>
+</div>
+
+<script>
+    // URL of the CSV file (assumes it's in the same folder)
+    const csvUrl = 'data.csv';
+
+    // Columns that are probably not useful for pivoting (adjust as needed)
+    const excludeColumns = ['Timestamp', 'Your Name :', 'Column 36', 'Column 1'];
+
+    let rawData = [];              // array of objects, each representing a row
+    let headers = [];              // array of column names
+
+    // Fetch and parse the CSV when the page loads
+    Papa.parse(csvUrl, {
+        download: true,
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+            rawData = results.data;
+            headers = results.meta.fields;
+
+            // Filter out unwanted columns
+            const filteredHeaders = headers.filter(h => !excludeColumns.includes(h));
+
+            // Populate dropdowns
+            populateDropdown('rowField', filteredHeaders);
+            populateDropdown('colField', filteredHeaders, true); // include empty option
+
+            // Enable the generate button
+            document.getElementById('generate').disabled = false;
+        },
+        error: function(err) {
+            console.error('CSV parsing error:', err);
+            document.getElementById('tableContainer').innerHTML = '<p style="color:red">Error loading CSV. Make sure data.csv is present.</p>';
+        }
+    });
+
+    function populateDropdown(selectId, options, addEmpty = false) {
+        const select = document.getElementById(selectId);
+        select.innerHTML = '';
+        if (addEmpty) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '-- None --';
+            select.appendChild(opt);
+        }
+        options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            // Clean up the label (remove extra quotes, newlines etc.)
+            let label = opt.replace(/["\n\r]/g, '').trim();
+            option.textContent = label;
+            select.appendChild(option);
+        });
+    }
+
+    document.getElementById('generate').addEventListener('click', function() {
+        const rowField = document.getElementById('rowField').value;
+        const colField = document.getElementById('colField').value;
+
+        if (!rowField) {
+            alert('Please select a Rows field.');
+            return;
+        }
+
+        // Build pivot table
+        const pivot = {};
+
+        rawData.forEach(row => {
+            const rowKey = row[rowField] || '(blank)';
+            const colKey = colField ? (row[colField] || '(blank)') : '_total_';
+
+            if (!pivot[rowKey]) pivot[rowKey] = {};
+            if (!pivot[rowKey][colKey]) pivot[rowKey][colKey] = 0;
+            pivot[rowKey][colKey]++;
+        });
+
+        // Get all unique column keys (if colField is used)
+        let allColKeys = [];
+        if (colField) {
+            const colSet = new Set();
+            Object.values(pivot).forEach(row => {
+                Object.keys(row).forEach(k => colSet.add(k));
+            });
+            allColKeys = Array.from(colSet).sort();
+        } else {
+            allColKeys = ['_total_'];
+        }
+
+        // Build HTML table
+        let html = '<table><thead><tr><th>' + rowField + '</th>';
+
+        // Column headers
+        allColKeys.forEach(key => {
+            html += '<th>' + (key === '_total_' ? 'Total' : key) + '</th>';
+        });
+        // Optionally a row total column (already included as '_total_' if no colField)
+        if (colField) {
+            html += '<th>Row Total</th>';
+        }
+        html += '</tr></thead><tbody>';
+
+        // Data rows and totals
+        const rowKeys = Object.keys(pivot).sort();
+        let grandTotal = 0;
+        const chartLabels = [];
+        const chartData = [];
+
+        rowKeys.forEach(rowKey => {
+            html += '<tr><td>' + rowKey + '</td>';
+            let rowSum = 0;
+            allColKeys.forEach(colKey => {
+                const count = pivot[rowKey][colKey] || 0;
+                html += '<td>' + count + '</td>';
+                rowSum += count;
+                grandTotal += count;
+            });
+            if (colField) {
+                html += '<td>' + rowSum + '</td>';
+            }
+            html += '</tr>';
+
+            chartLabels.push(rowKey);
+            chartData.push(rowSum);
+        });
+
+        // If no columns selected, we already have row totals in the only column; we can still use rowSum for chart
+        if (!colField) {
+            // chartLabels and chartData already set above (rowKeys loop)
+        } else {
+            // chart already uses row sums
+        }
+
+        // Optionally add a total row at bottom
+        if (colField) {
+            html += '<tr><td><strong>Column Total</strong></td>';
+            allColKeys.forEach(colKey => {
+                let colSum = 0;
+                rowKeys.forEach(rowKey => {
+                    colSum += pivot[rowKey][colKey] || 0;
+                });
+                html += '<td><strong>' + colSum + '</strong></td>';
+            });
+            html += '<td><strong>' + grandTotal + '</strong></td></tr>';
+        }
+
+        html += '</tbody></table>';
+        document.getElementById('tableContainer').innerHTML = html;
+
+        // Update chart
+        renderChart(chartLabels, chartData, rowField);
+    });
+
+    function renderChart(labels, data, label) {
+        const ctx = document.getElementById('chart').getContext('2d');
+        // Destroy previous chart if it exists
+        if (window.myChart) window.myChart.destroy();
+
+        window.myChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Number of responses by ' + label,
+                    data: data,
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: { beginAtZero: true, precision: 0 }
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>
