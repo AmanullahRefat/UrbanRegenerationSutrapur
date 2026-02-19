@@ -271,18 +271,20 @@
         }
 
         /* Compact note styling */
-        .note {
-            margin-top: 0.25rem;
+                .note {
+            margin: 0;                /* No extra space */
             font-size: 0.7rem;
             color: #9ca3af;
             display: flex;
             align-items: center;
             gap: 0.25rem;
-            line-height: 1;
+            line-height: 1;           /* Minimal line height */
+            height: auto;
         }
         .note svg {
             width: 0.8rem;
             height: 0.8rem;
+            flex-shrink: 0;
         }
 
         .chart-container {
