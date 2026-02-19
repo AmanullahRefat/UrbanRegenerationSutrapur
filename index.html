@@ -69,13 +69,6 @@
             padding-bottom: 0.5rem;
         }
 
-        .subsection-title {
-            font-size: 1.2rem;
-            font-weight: 600;
-            margin: 1.5rem 0 1rem 0;
-            color: #2d3c5e;
-        }
-
         .controls {
             background: #f9fafb;
             border-radius: 1rem;
@@ -278,14 +271,14 @@
         }
 
         /* Compact note styling */
-        .note {
-            margin: 0;
+         .note {
+            margin: 0;                /* No extra space */
             font-size: 0.7rem;
             color: #9ca3af;
             display: flex;
             align-items: center;
             gap: 0.25rem;
-            line-height: 1;
+            line-height: 1;           /* Minimal line height */
             height: auto;
         }
         .note svg {
@@ -368,7 +361,7 @@
         }
 
         /* Chi‑Square results styling */
-        .chi-result, .analysis-result {
+        .chi-result {
             background: #f0fdf4;
             border-left: 6px solid #10b981;
             padding: 1.5rem;
@@ -376,26 +369,19 @@
             margin-top: 1.5rem;
             font-size: 1rem;
         }
-        .analysis-result {
-            background: #f0f9ff;
-            border-left-color: #2563eb;
-        }
-        .analysis-result h4 {
-            color: #1e40af;
-        }
 
-        .chi-result h4, .analysis-result h4 {
+        .chi-result h4 {
             font-size: 1.2rem;
             font-weight: 600;
             margin-bottom: 1rem;
             color: #065f46;
         }
 
-        .chi-result p, .analysis-result p {
+        .chi-result p {
             margin: 0.5rem 0;
         }
 
-        .stat-highlight {
+        .chi-result .stat-highlight {
             font-weight: 700;
             color: #047857;
         }
@@ -452,7 +438,7 @@
 <div class="card">
     <div class="card-header">
         <h1>Incorporating Gender Aspects in Urban Regeneration in Sutrapur, Old Dhaka : Analyzing the Challenges and Opportunities</h1>
-        <p>Group responses, visualise, test relationships, and explore gender‑disaggregated insights.</p>
+        <p>Group responses, visualise with bar/pie charts, copy tables, and test relationships.</p>
     </div>
     <div class="card-body">
         <!-- ========== SUMMARY SECTION ========== -->
@@ -525,70 +511,9 @@
                 <button class="btn-secondary" id="runChi" disabled>Run Chi‑Square Test</button>
             </div>
         </div>
-        <div id="chiResult" class="chi-result" style="display: none;"></div>
-
-        <!-- ========== NEW ADVANCED GENDER ANALYSIS ========== -->
-        <h2 class="section-title">⚡ Advanced Gender Analysis</h2>
-
-        <!-- 1. Gender‑Disaggregated Profiles -->
-        <h3 class="subsection-title">👥 Gender‑Disaggregated Profiles</h3>
-        <div class="controls" style="margin-bottom:1rem;">
-            <div class="control-group">
-                <label for="genderVar">Compare by (variable)</label>
-                <select id="genderVar"></select>
-            </div>
-            <div class="button-group">
-                <button class="btn-outline" id="runGenderProfile">Show Profile</button>
-            </div>
+        <div id="chiResult" class="chi-result" style="display: none;">
+            <!-- dynamic result injected here -->
         </div>
-        <div id="genderProfileOutput" class="table-wrapper" style="max-height:300px; margin-bottom:1rem;">
-            <div style="padding:2rem; text-align:center; color:#9ca3af;">Select a variable and click "Show Profile"</div>
-        </div>
-
-        <!-- 2. Safety Perception Score -->
-        <h3 class="subsection-title">🛡️ Safety Perception Score</h3>
-        <div class="controls" style="margin-bottom:1rem;">
-            <div class="control-group">
-                <label for="safetyGroup">Group by (optional)</label>
-                <select id="safetyGroup">
-                    <option value="">— None (overall) —</option>
-                    <option value="1. Your Gender">Gender</option>
-                    <option value="2.What is your age group?">Age Group</option>
-                </select>
-            </div>
-            <div class="button-group">
-                <button class="btn-outline" id="runSafety">Calculate Safety Score</button>
-            </div>
-        </div>
-        <div id="safetyOutput" class="table-wrapper" style="max-height:300px; margin-bottom:1rem;">
-            <div style="padding:2rem; text-align:center; color:#9ca3af;">Click "Calculate Safety Score"</div>
-        </div>
-
-        <!-- 3. Regeneration Priority Mapping -->
-        <h3 class="subsection-title">🏗️ Regeneration Priority Mapping</h3>
-        <div class="controls" style="margin-bottom:1rem;">
-            <div class="control-group">
-                <label for="priorityGroup">Break down by</label>
-                <select id="priorityGroup">
-                    <option value="">— None (overall) —</option>
-                    <option value="1. Your Gender">Gender</option>
-                    <option value="2.What is your age group?">Age Group</option>
-                </select>
-            </div>
-            <div class="button-group">
-                <button class="btn-outline" id="runPriority">Analyse Priorities</button>
-            </div>
-        </div>
-        <div id="priorityOutput" class="table-wrapper" style="max-height:300px; margin-bottom:1rem;">
-            <div style="padding:2rem; text-align:center; color:#9ca3af;">Click "Analyse Priorities"</div>
-        </div>
-
-        <!-- 4. Gender Gap Analysis (all variables vs gender) -->
-        <h3 class="subsection-title">⚖️ Gender Gap Analysis</h3>
-        <div class="button-group" style="margin-bottom:1rem;">
-            <button class="btn-outline" id="runGapAnalysis">Run Gap Analysis (all vs Gender)</button>
-        </div>
-        <div id="gapOutput" class="analysis-result" style="display:none;"></div>
 
         <!-- Footer -->
         <footer>
@@ -598,34 +523,40 @@
 </div>
 
 <script>
-    // ==================== CONFIG ====================
+    // Configuration
     const csvUrl = 'data.csv';
     const excludeColumns = ['Timestamp', 'Your Name :', 'Column 36', 'Column 1'];
 
     let rawData = [];
     let headers = [];
 
-    // Store current summary state
+    // Store current summary state for chart updates and copy
     let currentSummary = {
-        rowField: null, colField: null, pivotData: null,
-        rowKeys: [], colKeys: [], rowTotals: {}, grandTotal: 0
+        rowField: null,
+        colField: null,
+        pivotData: null,
+        rowKeys: [],
+        colKeys: [],
+        rowTotals: {},
+        grandTotal: 0
     };
 
-    // ==================== LOAD DATA ====================
+    // Fetch and parse CSV
     Papa.parse(csvUrl, {
-        download: true, header: true, skipEmptyLines: true,
+        download: true,
+        header: true,
+        skipEmptyLines: true,
         complete: function(results) {
             rawData = results.data;
             headers = results.meta.fields.filter(h => !excludeColumns.includes(h));
 
-            // Populate dropdowns
+            // Populate dropdowns for summary
             populateDropdown('rowField', headers);
             populateDropdown('colField', headers, true);
+
+            // Populate dropdowns for chi‑square
             populateDropdown('chiVar1', headers);
             populateDropdown('chiVar2', headers);
-            populateDropdown('genderVar', headers.filter(h => h !== '1. Your Gender')); // exclude gender itself
-            // safetyGroup already manually populated in HTML
-            // priorityGroup manually populated
 
             // Enable buttons
             document.getElementById('generate').disabled = false;
@@ -633,17 +564,17 @@
         },
         error: function(err) {
             console.error('CSV error:', err);
-            document.getElementById('tableContainer').innerHTML = '<p style="color:red; padding:2rem;">Failed to load data.csv. Make sure it exists.</p>';
+            document.getElementById('tableContainer').innerHTML = '<p style="color:red; padding:2rem;">Failed to load data.csv. Make sure it exists in the same folder.</p>';
         }
     });
 
     function populateDropdown(selectId, options, addEmpty = false) {
         const select = document.getElementById(selectId);
-        if (!select) return;
         select.innerHTML = '';
         if (addEmpty) {
             const opt = document.createElement('option');
-            opt.value = ''; opt.textContent = '— None —';
+            opt.value = '';
+            opt.textContent = '— None —';
             select.appendChild(opt);
         }
         options.forEach(opt => {
@@ -655,145 +586,266 @@
         });
     }
 
-    // ==================== SUMMARY (existing) ====================
+    // ========== SUMMARY GENERATION ==========
     document.getElementById('generate').addEventListener('click', function() {
         const rowField = document.getElementById('rowField').value;
         const colField = document.getElementById('colField').value;
-        if (!rowField) { alert('Select a "Group by" field.'); return; }
-        document.getElementById('generate').innerHTML = '<span class="loading"></span> Generating...';
-        document.getElementById('generate').disabled = true;
+
+        if (!rowField) {
+            alert('Please select a "Group by" field.');
+            return;
+        }
+
+        const btn = document.getElementById('generate');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="loading"></span> Generating...';
+        btn.disabled = true;
+
         setTimeout(() => {
             generateSummary(rowField, colField);
-            document.getElementById('generate').innerHTML = 'Generate Summary';
-            document.getElementById('generate').disabled = false;
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         }, 10);
     });
 
     function generateSummary(rowField, colField) {
+        // Build pivot
         const pivot = {};
         rawData.forEach(row => {
             const rowKey = row[rowField] || '(blank)';
             const colKey = colField ? (row[colField] || '(blank)') : '_count_';
             if (!pivot[rowKey]) pivot[rowKey] = {};
-            pivot[rowKey][colKey] = (pivot[rowKey][colKey] || 0) + 1;
+            if (!pivot[rowKey][colKey]) pivot[rowKey][colKey] = 0;
+            pivot[rowKey][colKey]++;
         });
-        let colKeys = colField ? Array.from(new Set(Object.values(pivot).flatMap(Object.keys))).sort() : ['_count_'];
+
+        // Get column keys
+        let colKeys = [];
+        if (colField) {
+            const colSet = new Set();
+            Object.values(pivot).forEach(row => {
+                Object.keys(row).forEach(k => colSet.add(k));
+            });
+            colKeys = Array.from(colSet).sort();
+        } else {
+            colKeys = ['_count_'];
+        }
+
         const rowKeys = Object.keys(pivot).sort();
         const rowTotals = {};
         let grandTotal = 0;
         rowKeys.forEach(r => {
             let sum = 0;
-            colKeys.forEach(c => { sum += pivot[r][c] || 0; });
+            colKeys.forEach(c => {
+                sum += pivot[r][c] || 0;
+            });
             rowTotals[r] = sum;
             grandTotal += sum;
         });
-        currentSummary = { rowField, colField, pivotData: pivot, rowKeys, colKeys, rowTotals, grandTotal };
+
+        // Store for later use (chart, copy)
+        currentSummary = {
+            rowField,
+            colField,
+            pivotData: pivot,
+            rowKeys,
+            colKeys,
+            rowTotals,
+            grandTotal
+        };
+
+        // Render table
         renderSummaryTable();
+
+        // Show action buttons
         document.getElementById('tableActions').style.display = 'flex';
-        updateChartType();
+
+        // Prepare chart data and show chart container
+        updateChartType(); // initial render with default (bar)
         document.getElementById('chartContainer').style.display = 'block';
+
+        // Attach chart type radio listeners (if not already)
         attachChartTypeListeners();
     }
 
     function renderSummaryTable() {
         const { rowField, colField, pivotData, rowKeys, colKeys, rowTotals, grandTotal } = currentSummary;
-        let html = '<table><thead><tr><th>' + rowField + '</th>';
-        colKeys.forEach(k => html += '<th>' + (k === '_count_' ? 'Count' : k) + '</th>');
-        if (colField) html += '<th>Total</th>';
-        html += '</tr></thead><tbody>';
-        rowKeys.forEach(r => {
-            html += '<tr><td class="row-header">' + r + '</td>';
-            colKeys.forEach(c => html += '<td>' + (pivotData[r][c] || 0) + '</td>');
-            if (colField) html += '<td><strong>' + rowTotals[r] + '</strong></td>';
-            html += '</tr>';
+
+        let html = '<table><thead><tr>';
+        html += '<th>' + rowField + '</th>';
+        colKeys.forEach(key => {
+            let displayKey = key;
+            if (key === '_count_') displayKey = 'Count';
+            html += '<th>' + displayKey + '</th>';
         });
         if (colField) {
+            html += '<th>Total</th>';
+        }
+        html += '</tr></thead><tbody>';
+
+        rowKeys.forEach(rowKey => {
+            html += '<tr><td class="row-header">' + rowKey + '</td>';
+            colKeys.forEach(colKey => {
+                const count = pivotData[rowKey][colKey] || 0;
+                html += '<td>' + count + '</td>';
+            });
+            if (colField) {
+                html += '<td><strong>' + rowTotals[rowKey] + '</strong></td>';
+            }
+            html += '</tr>';
+        });
+
+        if (colField) {
+            // Column totals
             html += '<tr class="total-row"><td><strong>Total</strong></td>';
-            colKeys.forEach(c => {
-                let sum = 0;
-                rowKeys.forEach(r => sum += pivotData[r][c] || 0);
-                html += '<td><strong>' + sum + '</strong></td>';
+            colKeys.forEach(colKey => {
+                let colSum = 0;
+                rowKeys.forEach(rowKey => {
+                    colSum += pivotData[rowKey][colKey] || 0;
+                });
+                html += '<td><strong>' + colSum + '</strong></td>';
             });
             html += '<td><strong>' + grandTotal + '</strong></td></tr>';
         } else {
+            // Only one column: add a total row
             html += '<tr class="total-row"><td><strong>Total</strong></td><td><strong>' + grandTotal + '</strong></td></tr>';
         }
+
         html += '</tbody></table>';
         document.getElementById('tableContainer').innerHTML = html;
-        document.getElementById('chartLabel').innerText = colField ? `by ${rowField} (breakdown by ${colField})` : `by ${rowField}`;
+
+        // Update chart label
+        const label = currentSummary.colField 
+            ? `by ${currentSummary.rowField} (breakdown by ${currentSummary.colField})`
+            : `by ${currentSummary.rowField}`;
+        document.getElementById('chartLabel').innerText = label;
     }
 
-    // Chart functions (same as before, but we'll keep them)
+    // Chart type switching
     function attachChartTypeListeners() {
-        document.querySelectorAll('input[name="chartType"]').forEach(r => {
-            r.removeEventListener('change', chartTypeHandler);
-            r.addEventListener('change', chartTypeHandler);
-        });
+        const radios = document.querySelectorAll('input[name="chartType"]');
+        radios.forEach(r => r.removeEventListener('change', chartTypeHandler));
+        radios.forEach(r => r.addEventListener('change', chartTypeHandler));
     }
-    function chartTypeHandler() { updateChartType(); }
+
+    function chartTypeHandler() {
+        updateChartType();
+    }
+
     function updateChartType() {
         const selected = document.querySelector('input[name="chartType"]:checked')?.value;
-        if (!selected || !currentSummary.rowField) return;
+        if (!selected) return;
+
         const { rowField, colField, pivotData, rowKeys, colKeys, rowTotals } = currentSummary;
+
+        // Disable pie if two dimensions
         const pieRadio = document.querySelector('input[value="pie"]');
-        if (colField && colKeys.length && colKeys[0] !== '_count_') {
+        if (colField && colKeys.length > 0 && colKeys[0] !== '_count_') {
             pieRadio.disabled = true;
-            if (selected === 'pie') { document.querySelector('input[value="bar"]').checked = true; updateChartType(); return; }
-        } else pieRadio.disabled = false;
+            if (selected === 'pie') {
+                // switch to bar
+                document.querySelector('input[value="bar"]').checked = true;
+                updateChartType(); // recursive call with new selection
+                return;
+            }
+        } else {
+            pieRadio.disabled = false;
+        }
 
         const ctx = document.getElementById('chart').getContext('2d');
         if (window.myChart) window.myChart.destroy();
 
         if (selected === 'pie') {
+            // Pie chart: only one dimension (row totals)
+            const labels = rowKeys;
             const data = rowKeys.map(r => rowTotals[r]);
             window.myChart = new Chart(ctx, {
                 type: 'pie',
-                data: { labels: rowKeys, datasets: [{ data, backgroundColor: generateColors(rowKeys.length) }] },
-                options: { plugins: { legend: { position: 'bottom' } } }
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: generateColors(labels.length),
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw} responses` } }
+                    }
+                }
             });
-        } else {
+        } else if (selected === 'bar' || selected === 'stacked') {
+            // Grouped or stacked bar
             const labels = rowKeys;
             const datasets = [];
+
             if (colField && colKeys[0] !== '_count_') {
+                // Multiple columns
                 const colors = generateColors(colKeys.length);
                 colKeys.forEach((col, idx) => {
                     datasets.push({
                         label: col,
                         data: rowKeys.map(r => pivotData[r][col] || 0),
                         backgroundColor: colors[idx],
-                        stack: selected === 'stacked' ? 'stack' : undefined
+                        stack: selected === 'stacked' ? 'stack' : undefined,
                     });
                 });
             } else {
-                datasets.push({ label: 'Count', data: rowKeys.map(r => rowTotals[r]), backgroundColor: '#3b82f6' });
+                // Single column
+                datasets.push({
+                    label: 'Count',
+                    data: rowKeys.map(r => rowTotals[r]),
+                    backgroundColor: '#3b82f6',
+                });
             }
+
             window.myChart = new Chart(ctx, {
                 type: 'bar',
                 data: { labels, datasets },
-                options: { scales: { y: { beginAtZero: true, precision: 0 } } }
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'top' },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, precision: 0, title: { display: true, text: 'Number of responses' } }
+                    }
+                }
             });
         }
     }
+
     function generateColors(n) {
-        const palette = ['#3b82f6','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#06b6d4','#f97316'];
+        const palette = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
         return Array.from({ length: n }, (_, i) => palette[i % palette.length]);
     }
 
-    // Copy/Download (same as before)
+    // ========== COPY TABLE ==========
     document.getElementById('copyTableBtn').addEventListener('click', function() {
-        if (!currentSummary.rowField) return;
         const { rowField, colField, pivotData, rowKeys, colKeys, rowTotals, grandTotal } = currentSummary;
+        if (!rowField) return;
+
+        // Build TSV (tab-separated)
         let rows = [];
+
+        // Header
         let header = [rowField];
         colKeys.forEach(k => header.push(k === '_count_' ? 'Count' : k));
         if (colField) header.push('Total');
         rows.push(header.join('\t'));
+
+        // Data rows
         rowKeys.forEach(r => {
             let row = [r];
             colKeys.forEach(c => row.push(pivotData[r][c] || 0));
             if (colField) row.push(rowTotals[r]);
             rows.push(row.join('\t'));
         });
+
+        // Total row
         let totalRow = ['Total'];
         if (colField) {
             colKeys.forEach(c => {
@@ -802,24 +854,43 @@
                 totalRow.push(sum);
             });
             totalRow.push(grandTotal);
-        } else totalRow.push(grandTotal);
+        } else {
+            totalRow.push(grandTotal);
+        }
         rows.push(totalRow.join('\t'));
-        navigator.clipboard.writeText(rows.join('\n')).then(() => alert('Table copied!')).catch(() => alert('Failed to copy.'));
+
+        const tsv = rows.join('\n');
+
+        // Copy to clipboard
+        navigator.clipboard.writeText(tsv).then(() => {
+            alert('Table copied to clipboard! You can paste it into Excel or Word.');
+        }).catch(() => {
+            alert('Failed to copy. You can download as CSV instead.');
+        });
     });
+
+    // ========== DOWNLOAD CSV ==========
     document.getElementById('downloadCsvBtn').addEventListener('click', function() {
-        if (!currentSummary.rowField) return;
         const { rowField, colField, pivotData, rowKeys, colKeys, rowTotals, grandTotal } = currentSummary;
+        if (!rowField) return;
+
         let csv = '';
+
+        // Header
         let header = [rowField];
         colKeys.forEach(k => header.push(k === '_count_' ? 'Count' : k));
         if (colField) header.push('Total');
         csv += header.join(',') + '\n';
+
+        // Data rows
         rowKeys.forEach(r => {
             let row = [r];
             colKeys.forEach(c => row.push(pivotData[r][c] || 0));
             if (colField) row.push(rowTotals[r]);
             csv += row.join(',') + '\n';
         });
+
+        // Total row
         let totalRow = ['Total'];
         if (colField) {
             colKeys.forEach(c => {
@@ -828,252 +899,151 @@
                 totalRow.push(sum);
             });
             totalRow.push(grandTotal);
-        } else totalRow.push(grandTotal);
+        } else {
+            totalRow.push(grandTotal);
+        }
         csv += totalRow.join(',');
+
+        // Trigger download
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url; a.download = 'summary.csv'; a.click();
+        a.href = url;
+        a.download = 'summary.csv';
+        a.click();
         URL.revokeObjectURL(url);
     });
 
-    // ==================== CHI‑SQUARE (existing) ====================
+    // ========== CHI‑SQUARE TEST ==========
     document.getElementById('runChi').addEventListener('click', function() {
         const var1 = document.getElementById('chiVar1').value;
         const var2 = document.getElementById('chiVar2').value;
-        if (!var1 || !var2 || var1 === var2) { alert('Select two different variables.'); return; }
-        document.getElementById('runChi').innerHTML = '<span class="loading"></span> Running...';
-        document.getElementById('runChi').disabled = true;
+
+        if (!var1 || !var2) {
+            alert('Please select two variables.');
+            return;
+        }
+        if (var1 === var2) {
+            alert('Please select two different variables.');
+            return;
+        }
+
+        const btn = document.getElementById('runChi');
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="loading"></span> Running test...';
+        btn.disabled = true;
+
         setTimeout(() => {
             runChiSquare(var1, var2);
-            document.getElementById('runChi').innerHTML = 'Run Chi‑Square Test';
-            document.getElementById('runChi').disabled = false;
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         }, 10);
     });
+
     function runChiSquare(var1, var2) {
-        const table = {}; const rowSet = new Set(); const colSet = new Set();
+        // Build contingency table
+        const table = {};  // table[row][col] = count
+        const rowSet = new Set();
+        const colSet = new Set();
+
         rawData.forEach(row => {
-            const r = row[var1] || '(blank)', c = row[var2] || '(blank)';
-            rowSet.add(r); colSet.add(c);
-            if (!table[r]) table[r] = {};
-            table[r][c] = (table[r][c] || 0) + 1;
+            const rowVal = row[var1] || '(blank)';
+            const colVal = row[var2] || '(blank)';
+            rowSet.add(rowVal);
+            colSet.add(colVal);
+
+            if (!table[rowVal]) table[rowVal] = {};
+            if (!table[rowVal][colVal]) table[rowVal][colVal] = 0;
+            table[rowVal][colVal]++;
         });
-        const rowKeys = Array.from(rowSet).sort(), colKeys = Array.from(colSet).sort();
-        const rowTotals = {}; let grandTotal = 0;
+
+        const rowKeys = Array.from(rowSet).sort();
+        const colKeys = Array.from(colSet).sort();
+
+        // Row totals and grand total
+        const rowTotals = {};
+        let grandTotal = 0;
         rowKeys.forEach(r => {
             let sum = 0;
-            colKeys.forEach(c => { sum += table[r]?.[c] || 0; });
-            rowTotals[r] = sum; grandTotal += sum;
+            colKeys.forEach(c => {
+                sum += table[r]?.[c] || 0;
+            });
+            rowTotals[r] = sum;
+            grandTotal += sum;
         });
+
         const colTotals = {};
         colKeys.forEach(c => {
             let sum = 0;
-            rowKeys.forEach(r => { sum += table[r]?.[c] || 0; });
+            rowKeys.forEach(r => {
+                sum += table[r]?.[c] || 0;
+            });
             colTotals[c] = sum;
         });
-        let chiSq = 0, df = (rowKeys.length-1)*(colKeys.length-1), lowExpected = 0, totalCells = rowKeys.length*colKeys.length;
+
+        // Compute chi‑square
+        let chiSq = 0;
+        let df = (rowKeys.length - 1) * (colKeys.length - 1);
+        let lowExpectedCount = 0;
+        let totalCells = rowKeys.length * colKeys.length;
+
         rowKeys.forEach(r => {
             colKeys.forEach(c => {
                 const observed = table[r]?.[c] || 0;
                 const expected = (rowTotals[r] * colTotals[c]) / grandTotal;
-                if (expected < 5) lowExpected++;
-                if (expected > 0) chiSq += Math.pow(observed-expected,2)/expected;
+                if (expected < 5) lowExpectedCount++;
+                if (expected > 0) {
+                    chiSq += Math.pow(observed - expected, 2) / expected;
+                }
             });
         });
+
+        // p‑value (upper tail) using jStat
         const pValue = 1 - jStat.chisquare.cdf(chiSq, df);
-        let html = '<h4>🔍 Chi‑Square Test Result</h4><div class="chi-table-small"><table><thead><tr><th></th>';
+
+        // Build result HTML
+        let html = '<h4>🔍 Chi‑Square Test Result</h4>';
+
+        // Contingency table
+        html += '<div class="chi-table-small"><table><thead><tr><th></th>';
         colKeys.forEach(c => html += '<th>' + c + '</th>');
         html += '<th>Total</th></tr></thead><tbody>';
         rowKeys.forEach(r => {
             html += '<tr><td class="row-header">' + r + '</td>';
             let rowSum = 0;
-            colKeys.forEach(c => { const val = table[r]?.[c] || 0; html += '<td>' + val + '</td>'; rowSum += val; });
+            colKeys.forEach(c => {
+                const val = table[r]?.[c] || 0;
+                html += '<td>' + val + '</td>';
+                rowSum += val;
+            });
             html += '<td><strong>' + rowSum + '</strong></td></tr>';
         });
+        // Column totals row
         html += '<tr class="total-row"><td><strong>Total</strong></td>';
         colKeys.forEach(c => html += '<td><strong>' + colTotals[c] + '</strong></td>');
-        html += '<td><strong>' + grandTotal + '</strong></td></tr></tbody></table></div>';
+        html += '<td><strong>' + grandTotal + '</strong></td></tr>';
+        html += '</tbody></table></div>';
+
+        // Test statistics
         html += '<p><span class="stat-highlight">Chi‑Square:</span> ' + chiSq.toFixed(4) + '</p>';
-        html += '<p><span class="stat-highlight">df:</span> ' + df + '</p>';
+        html += '<p><span class="stat-highlight">Degrees of freedom:</span> ' + df + '</p>';
         html += '<p><span class="stat-highlight">p‑value:</span> ' + pValue.toExponential(4) + '</p>';
-        html += '<p><span class="stat-highlight">Interpretation:</span> ' + (pValue < 0.05 ? 'Significant association (p < 0.05).' : 'No significant association (p ≥ 0.05).') + '</p>';
-        if ((lowExpected/totalCells)*100 > 20) html += '<div class="chi-warning">⚠️ ' + (lowExpected/totalCells*100).toFixed(1) + '% of cells have expected count < 5. Chi‑square may be unreliable.</div>';
+
+        // Interpretation
+        const significant = pValue < 0.05;
+        html += '<p><span class="stat-highlight">Interpretation:</span> ';
+        html += significant ? 'There is a significant association between the variables (p < 0.05).' : 'No significant association detected (p ≥ 0.05).';
+        html += '</p>';
+
+        // Warning about expected frequencies
+        const lowExpectedPercent = (lowExpectedCount / totalCells) * 100;
+        if (lowExpectedPercent > 20) {
+            html += '<div class="chi-warning">⚠️ Caution: ' + lowExpectedPercent.toFixed(1) + '% of cells have expected count less than 5. The chi‑square approximation may be unreliable.</div>';
+        }
+
         document.getElementById('chiResult').innerHTML = html;
         document.getElementById('chiResult').style.display = 'block';
     }
-
-    // ==================== NEW GENDER FUNCTIONS ====================
-    // 1. Gender Profile
-    document.getElementById('runGenderProfile').addEventListener('click', function() {
-        const var2 = document.getElementById('genderVar').value;
-        if (!var2) { alert('Select a variable to compare.'); return; }
-        const genderCol = '1. Your Gender';
-        const counts = {};
-        rawData.forEach(row => {
-            const g = row[genderCol] || '(blank)';
-            const v = row[var2] || '(blank)';
-            if (!counts[g]) counts[g] = {};
-            if (!counts[g][v]) counts[g][v] = 0;
-            counts[g][v]++;
-        });
-        const genders = Object.keys(counts).sort();
-        const values = Array.from(new Set(rawData.map(r => r[var2] || '(blank)'))).sort();
-        let html = '<table><thead><tr><th>' + var2 + '</th>';
-        genders.forEach(g => html += '<th>' + g + '</th><th>% within ' + g + '</th>');
-        html += '<th>Total</th></tr></thead><tbody>';
-        const genderTotals = {};
-        genders.forEach(g => { genderTotals[g] = Object.values(counts[g]).reduce((a,b)=>a+b,0); });
-        values.forEach(val => {
-            html += '<tr><td class="row-header">' + val + '</td>';
-            let rowTotal = 0;
-            genders.forEach(g => {
-                const cnt = counts[g]?.[val] || 0;
-                const pct = genderTotals[g] ? ((cnt / genderTotals[g]) * 100).toFixed(1) : '0.0';
-                html += '<td>' + cnt + '</td><td>' + pct + '%</td>';
-                rowTotal += cnt;
-            });
-            html += '<td>' + rowTotal + '</td></tr>';
-        });
-        html += '</tbody></table>';
-        document.getElementById('genderProfileOutput').innerHTML = html;
-    });
-
-    // 2. Safety Score
-    document.getElementById('runSafety').addEventListener('click', function() {
-        const groupBy = document.getElementById('safetyGroup').value;
-        const safetyMap = { 'Very Unsafe':1, 'Unsafe':2, 'Moderately Unsafe':3, 'Safe':4, 'Very Safe':5 };
-        const results = {};
-        rawData.forEach(row => {
-            const key = groupBy ? (row[groupBy] || '(blank)') : '_all_';
-            if (!results[key]) results[key] = { count:0, sumFemale:0, sumMale:0, avoidYes:0, avoidTotal:0 };
-            const grp = results[key];
-            grp.count++;
-            // female safety
-            const fAns = row['6. How safe the roads are for female at evening or night?'];
-            if (fAns && safetyMap[fAns] !== undefined) grp.sumFemale += safetyMap[fAns];
-            // male safety
-            const mAns = row['7. How safe the roads are for male at night?'];
-            if (mAns && safetyMap[mAns] !== undefined) grp.sumMale += safetyMap[mAns];
-            // avoid place
-            const avoid = row['5. Do you avoid any place due to safety concern?'];
-            if (avoid === 'Yes') grp.avoidYes++;
-            grp.avoidTotal++;
-        });
-        let html = '<table><thead><tr><th>Group</th><th>Avg Female Safety</th><th>Avg Male Safety</th><th>Avoid Place (%)</th></tr></thead><tbody>';
-        Object.keys(results).sort().forEach(k => {
-            const r = results[k];
-            const avgF = r.count ? (r.sumFemale / r.count).toFixed(2) : '-';
-            const avgM = r.count ? (r.sumMale / r.count).toFixed(2) : '-';
-            const avoidPct = r.avoidTotal ? ((r.avoidYes / r.avoidTotal)*100).toFixed(1) : '0.0';
-            html += `<tr><td class="row-header">${k}</td><td>${avgF}</td><td>${avgM}</td><td>${avoidPct}%</td></tr>`;
-        });
-        html += '</tbody></table>';
-        document.getElementById('safetyOutput').innerHTML = html;
-    });
-
-    // 3. Regeneration Priorities (categorisation)
-    const priorityKeywords = {
-        'Housing': ['housing', 'house', 'settlement', 'building', 'flat', 'apartment', 'renovat', 'old house', 'vulnerable house'],
-        'Roads': ['road', 'street', 'narrow', 'widening', 'footpath', 'pedestrian', 'traffic'],
-        'Drainage': ['drain', 'water logging', 'sewer', 'waste water', 'odour', 'smell'],
-        'Green Space': ['green', 'park', 'recreational', 'open space', 'playground'],
-        'Safety': ['safety', 'security', 'violence', 'snatching', 'unsafe', 'fear'],
-        'Other': []
-    };
-    function categorisePriority(text) {
-        if (!text) return 'Unspecified';
-        const lower = text.toLowerCase();
-        for (let [cat, keywords] of Object.entries(priorityKeywords)) {
-            for (let kw of keywords) {
-                if (lower.includes(kw)) return cat;
-            }
-        }
-        return 'Other';
-    }
-    document.getElementById('runPriority').addEventListener('click', function() {
-        const groupBy = document.getElementById('priorityGroup').value;
-        const priorityCol = 'In your area what types of Regeneration Should be prioritized ?'; // exact column name
-        const counts = {};
-        rawData.forEach(row => {
-            const group = groupBy ? (row[groupBy] || '(blank)') : '_all_';
-            const text = row[priorityCol] || '';
-            const cat = categorisePriority(text);
-            if (!counts[group]) counts[group] = {};
-            counts[group][cat] = (counts[group][cat] || 0) + 1;
-        });
-        const groups = Object.keys(counts).sort();
-        const categories = ['Housing','Roads','Drainage','Green Space','Safety','Other','Unspecified'];
-        let html = '<table><thead><tr><th>Group</th>';
-        categories.forEach(c => html += '<th>' + c + '</th>');
-        html += '<th>Total</th></tr></thead><tbody>';
-        groups.forEach(g => {
-            html += '<tr><td class="row-header">' + g + '</td>';
-            let total = 0;
-            categories.forEach(c => {
-                const cnt = counts[g][c] || 0;
-                html += '<td>' + cnt + '</td>';
-                total += cnt;
-            });
-            html += '<td>' + total + '</td></tr>';
-        });
-        html += '</tbody></table>';
-        document.getElementById('priorityOutput').innerHTML = html;
-    });
-
-    // 4. Gender Gap Analysis (all categorical vs gender)
-    document.getElementById('runGapAnalysis').addEventListener('click', function() {
-        const genderCol = '1. Your Gender';
-        const excludeFromGap = ['Timestamp','Your Name :','Column 36','Column 1', genderCol];
-        const catHeaders = headers.filter(h => !excludeFromGap.includes(h) && !h.includes('?') && !h.includes('problem') && !h.includes('challenge')); // rough filter
-        let results = [];
-        catHeaders.forEach(v => {
-            const table = {}; const rowSet = new Set(); const colSet = new Set();
-            rawData.forEach(row => {
-                const r = row[genderCol] || '(blank)';
-                const c = row[v] || '(blank)';
-                rowSet.add(r); colSet.add(c);
-                if (!table[r]) table[r] = {};
-                table[r][c] = (table[r][c] || 0) + 1;
-            });
-            const rowKeys = Array.from(rowSet).sort();
-            const colKeys = Array.from(colSet).sort();
-            if (rowKeys.length < 2 || colKeys.length < 2) return; // need at least 2x2
-            const rowTotals = {}; let grandTotal = 0;
-            rowKeys.forEach(r => {
-                let sum = 0;
-                colKeys.forEach(c => { sum += table[r]?.[c] || 0; });
-                rowTotals[r] = sum; grandTotal += sum;
-            });
-            const colTotals = {};
-            colKeys.forEach(c => {
-                let sum = 0;
-                rowKeys.forEach(r => { sum += table[r]?.[c] || 0; });
-                colTotals[c] = sum;
-            });
-            let chiSq = 0, df = (rowKeys.length-1)*(colKeys.length-1);
-            let lowExpected = 0, totalCells = rowKeys.length*colKeys.length;
-            rowKeys.forEach(r => {
-                colKeys.forEach(c => {
-                    const observed = table[r]?.[c] || 0;
-                    const expected = (rowTotals[r] * colTotals[c]) / grandTotal;
-                    if (expected < 5) lowExpected++;
-                    if (expected > 0) chiSq += Math.pow(observed-expected,2)/expected;
-                });
-            });
-            const pValue = 1 - jStat.chisquare.cdf(chiSq, df);
-            results.push({ variable: v, chiSq, df, pValue, lowExpectedPercent: (lowExpected/totalCells)*100 });
-        });
-        results.sort((a,b) => a.pValue - b.pValue);
-        let html = '<h4>🔍 Gender Gap Analysis (vs Gender)</h4><table><thead><tr><th>Variable</th><th>Chi‑Square</th><th>df</th><th>p‑value</th><th>Interpretation</th><th>Note</th></tr></thead><tbody>';
-        results.slice(0,20).forEach(r => {
-            const sig = r.pValue < 0.05 ? 'Significant' : 'Not significant';
-            const warn = r.lowExpectedPercent > 20 ? '⚠️ low expected counts' : '';
-            html += `<tr><td class="row-header">${r.variable}</td><td>${r.chiSq.toFixed(2)}</td><td>${r.df}</td><td>${r.pValue.toExponential(4)}</td><td>${sig}</td><td>${warn}</td></tr>`;
-        });
-        html += '</tbody></table>';
-        document.getElementById('gapOutput').innerHTML = html;
-        document.getElementById('gapOutput').style.display = 'block';
-    });
 </script>
 </body>
 </html>
